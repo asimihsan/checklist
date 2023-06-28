@@ -1,26 +1,44 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import React, {useState} from 'react';
+import 'bootstrap/dist/css/bootstrap.css';
+import { marked } from 'marked';
+import Checklist from './Checklist';
 
 function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+    const [markdown, setMarkdown] = useState('');
+    const [html, setHtml] = useState('');
+
+    const handleMarkdownChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setMarkdown(event.target.value);
+    };
+
+    const handleButtonClick = () => {
+        const parsedHtml = marked(
+            markdown, {
+                gfm: true,
+                breaks: true,
+                mangle: false,
+                headerIds: false,
+            });
+        setHtml(parsedHtml);
+    };
+
+    return (
+        <div className="App container">
+            <div className="row">
+                <div className="col">
+                    <textarea className="form-control" value={markdown} onChange={handleMarkdownChange} />
+                </div>
+                <div className="col">
+                    <button className="btn btn-primary" onClick={handleButtonClick}>Generate Checklist</button>
+                </div>
+            </div>
+            <div className="row">
+                <div className="col">
+                    <Checklist html={html} />
+                </div>
+            </div>
+        </div>
+    );
 }
 
 export default App;
