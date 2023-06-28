@@ -13,12 +13,15 @@ import 'bootstrap/dist/css/bootstrap.css';
 import { marked } from 'marked';
 import Checklist from './Checklist';
 import HtmlToReact from 'html-to-react';
-import {tab} from "@testing-library/user-event/dist/tab";
+import { Parser, ProcessNodeDefinitions } from 'html-to-react';
+import parser = marked.parser;
 
 function App() {
     const [markdown, setMarkdown] = useState('');
     const [html, setHtml] = useState('');
     const [activeTab, setActiveTab] = useState('markdown');
+    const [checkboxStates, setCheckboxStates] = useState({});
+    const [reactElements, setReactElements] = useState<React.ReactNode[]>([]);
 
     const handleMarkdownChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
         setMarkdown(event.target.value);
@@ -26,15 +29,69 @@ function App() {
 
     const handleButtonClick = (event: React.FormEvent) => {
         event.preventDefault();
-        const parsedHtml = marked(
+        let parsedHtml = marked(
             markdown, {
                 gfm: true,
                 breaks: true,
                 mangle: false,
                 headerIds: false,
             });
+
+        // Remove the disabled attribute from the HTML string
+        parsedHtml = parsedHtml.replace(/ disabled=""/g, '');
+
         setHtml(parsedHtml);
         setActiveTab('checklist');
+
+        // Parse the raw HTML into React elements
+        // @ts-ignore
+        const parser = new Parser();
+        const reactElements = parser.parse(parsedHtml);
+
+        // Traverse the tree and replace the checkboxes with controlled components
+        // @ts-ignore
+        const newReactElements = reactElements.map((element, index) => {
+            if (element.type === 'input' && element.props.type === 'checkbox') {
+                const isChecked = element.props.checked !== undefined;
+                // @ts-ignore
+                return <input type="checkbox" checked={checkboxStates[index] || isChecked} onChange={(event) => handleCheckboxChange(index, event)} key={index} />;
+            }
+            return element;
+        });
+
+        // Initialize the checked state of each checkbox
+        // @ts-ignore
+        const initialCheckboxStates = newReactElements.reduce((acc, element, index) => {
+            if (element.type === 'input' && element.props.type === 'checkbox') {
+                acc[index] = element.props.checked;
+            }
+            return acc;
+        }, {});
+        setCheckboxStates(initialCheckboxStates);
+        setReactElements(newReactElements);
+    };
+
+    // @ts-ignore
+    const handleCheckboxChange = (index, event) => {
+        setCheckboxStates(prevStates => {
+            const newStates = { ...prevStates, [index]: event.target.checked };
+
+            // Recursively update the display style of all descendants
+            // @ts-ignore
+            const updateDisplayStyle = (element) => {
+                // @ts-ignore
+                if (element.type === 'li' && element.props.parentIndex === index) {
+                    // @ts-ignore
+                    element.props.style.display = newStates[index] ? 'block' : 'none';
+                }
+                if (element.props.children) {
+                    element.props.children.forEach(updateDisplayStyle);
+                }
+            };
+            reactElements.forEach(updateDisplayStyle);
+
+            return newStates;
+        });
     };
 
     // @ts-ignore
@@ -45,6 +102,7 @@ function App() {
             elements = [elements];
         }
 
+        console.log('elements');
         console.log(elements);
 
         // @ts-ignore
@@ -53,6 +111,8 @@ function App() {
                 markdown.push(element);
             } else if (React.isValidElement(element)) {
                 if (element.type === 'li') {
+                    console.log('li');
+                    console.log(element);
 
                     // @ts-ignore
                     const checkbox = element.props.children[0];
@@ -60,6 +120,13 @@ function App() {
                     // @ts-ignore
                     const text = element.props.children[1];
                     const isChecked = checkbox.props.checked;
+
+                    console.log('checkbox');
+                    console.log(checkbox);
+                    console.log('text');
+                    console.log(text);
+                    console.log('isChecked');
+                    console.log(isChecked);
 
                     markdown.push(`${'  '.repeat(level)}- [${isChecked ? 'x' : ' '}] ${text}`);
 
@@ -125,7 +192,7 @@ function App() {
                 </div>
                 <div className={`tab-pane ${activeTab === 'checklist' ? 'active' : ''}`} id="checklist">
                     <button className="btn btn-primary" onClick={handleCopyToClipboard}>Copy to Clipboard</button>
-                    <Checklist html={html} />
+                    <Checklist reactElements={reactElements} checkboxStates={checkboxStates} handleCheckboxChange={handleCheckboxChange} />
                 </div>
             </div>
         </div>

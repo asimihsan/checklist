@@ -11,10 +11,12 @@
 import React, { useEffect, useRef } from 'react';
 
 interface ChecklistProps {
-    html: string;
+    reactElements: React.ReactNode[];
+    checkboxStates: { [key: number]: boolean };
+    handleCheckboxChange: (index: number, event: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-const Checklist: React.FC<ChecklistProps> = ({ html }) => {
+const Checklist: React.FC<ChecklistProps> = ({ reactElements, checkboxStates, handleCheckboxChange }) => {
     const divRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -30,12 +32,14 @@ const Checklist: React.FC<ChecklistProps> = ({ html }) => {
                 if (checkbox && subItems.length > 0) {
                     // Remove the disabled attribute from the checkbox
                     (checkbox as HTMLInputElement).disabled = false;
+                    (checkbox as HTMLInputElement).defaultChecked = (checkbox as HTMLInputElement).checked;
 
                     // Remove the disabled attribute from all sub-item checkboxes
                     subItems.forEach(subItem => {
                         const subItemCheckbox = subItem.querySelector('input[type="checkbox"]');
                         if (subItemCheckbox) {
                             (subItemCheckbox as HTMLInputElement).disabled = false;
+                            (subItemCheckbox as HTMLInputElement).defaultChecked = (subItemCheckbox as HTMLInputElement).checked;
                         }
                     });
 
@@ -53,10 +57,24 @@ const Checklist: React.FC<ChecklistProps> = ({ html }) => {
                 }
             });
         }
-    }, [html]);
+    });
 
     return (
-        <div ref={divRef} dangerouslySetInnerHTML={{ __html: html }} />
+        <div>
+            {reactElements.map((element, index) => {
+                // @ts-ignore
+                if (element.type === 'input' && element.props.type === 'checkbox') {
+                    // @ts-ignore
+                    return React.cloneElement(element, {
+                        checked: checkboxStates[index],
+
+                        // @ts-ignore
+                        onChange: (event) => handleCheckboxChange(index, event),
+                    });
+                }
+                return element;
+            })}
+        </div>
     );
 };
 
