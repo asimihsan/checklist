@@ -6,7 +6,6 @@ import reportWebVitals from './reportWebVitals';
 
 import 'bootstrap/dist/js/bootstrap.bundle.min.js';
 import 'bootstrap/dist/css/bootstrap.css';
-import 'jquery';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
